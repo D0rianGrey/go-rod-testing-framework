@@ -2,11 +2,13 @@ package browser
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/D0rianGrey/go-rod-testing-framework/config"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
-	"github.com/yourusername/go-rod-testing-framework/config"
 )
 
 // Browser представляет собой обертку над браузером Rod
@@ -52,7 +54,20 @@ func (b *Browser) TakeScreenshot(path string) error {
 	if b.Page == nil {
 		return nil
 	}
-	return b.Page.Screenshot(path)
+
+	// Создаем директорию, если она не существует
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	// Делаем скриншот и сохраняем в файл
+	data, err := b.Page.Screenshot(false, nil)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0644)
 }
 
 // WaitForLoad ожидает загрузки страницы
@@ -66,5 +81,8 @@ func (b *Browser) WaitForLoad() {
 func (b *Browser) WaitForNavigation(timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	b.Page.MustWaitNavigation(ctx)
+
+	// Устанавливаем контекст и ждем навигации
+	b.Page.Context(ctx)
+	b.Page.MustWaitNavigation()
 }
